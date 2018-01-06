@@ -1,0 +1,18 @@
+spring:
+  profiles: default
+server:
+  port: 30001
+  #port: ${PORT:${SERVER_PORT:0}}
+words: dog,cat,door,apple
+---
+spring:
+  profiles: dev
+words: dev-dog,dev-cat,dev-door,dev-apple
+server:
+  port: 30001
+---
+spring:
+  profiles: prod
+words: dog,cat,door,apple
+server:
+  port: 8080

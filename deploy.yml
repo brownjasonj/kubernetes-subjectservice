@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: subjectservice
+spec:
+  replicas: 2
+  minReadySeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: subjectservice
+    spec:
+      containers:
+      - name: subjectservice-pod
+        image: jajabro/subjectservice:latest
+        ports:
+        - containerPort: 8080
