@@ -12,6 +12,12 @@ server:
   port: 30001
 ---
 spring:
+  profiles: test
+words: dev-dog,dev-cat,dev-door,dev-apple
+server:
+  port: 30001
+---
+spring:
   profiles: prod
 words: dog,cat,door,apple
 server:

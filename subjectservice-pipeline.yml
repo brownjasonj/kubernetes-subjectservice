@@ -12,18 +12,18 @@ parameters:
   description: The source URL for the application
   displayName: Source URL
   required: true
-  value: https://github.com/openshift/openshift-jee-sample.git
+  value: https://github.com/brownjasonj/kubernetes-subjectservice.git
 - name: GIT_SOURCE_REF
   description: The source Ref for the application
   displayName: Source Ref
   required: true
   value: master
-- description: Github trigger secret.  A difficult to guess string encoded as part of the webhook URL.  Not encrypted.
-  displayName: GitHub Webhook Secret
-  from: '[a-zA-Z0-9]{40}'
-  generate: expression
-  name: GITHUB_WEBHOOK_SECRET
-  required: true
+#- description: Github trigger secret.  A difficult to guess string encoded as part of the webhook URL.  Not encrypted.
+#  displayName: GitHub Webhook Secret
+#  from: '[a-zA-Z0-9]{40}'
+#  generate: expression
+#  name: GITHUB_WEBHOOK_SECRET
+#  required: true
 - description: A secret string used to configure the Generic webhook.
   displayName: Generic Webhook Secret
   from: '[a-zA-Z0-9]{40}'
@@ -83,19 +83,19 @@ objects:
                     project = env.PROJECT_NAME
                   }
                 }
-                node("maven") {
+                node("gradle") {
                   stage("Checkout") {
                     git url: "${GIT_SOURCE_URL}", branch: "${GIT_SOURCE_REF}"
                   }
-                  stage("Build WAR") {
-                    sh "mvn clean package -Popenshift"
-                    stash name:"war", includes:"target/ROOT.war"
+                  stage("Build JAR") {
+                    sh "gradle bootRepackage"
+                    stash name:"jar", includes:"build/libs/SubjectService-0.0.1-SNAPSHOT.jar"
                   }
                 }
                 node {
                   stage("Build Image") {
-                    unstash name:"war"
-                    sh "oc start-build ${appName}-docker --from-file=target/ROOT.war -n ${project}"
+                    unstash name:"jar"
+                    sh "oc start-build ${appName}-docker --from-file=build/libs/SubjectService-0.0.1-SNAPSHOT.jar -n ${project}"
                     openshiftVerifyBuild bldCfg: "${appName}-docker", namespace: project, waitTime: '20', waitUnit: 'min'
                   }
                   stage("Deploy") {
@@ -110,13 +110,13 @@ objects:
              throw err
           }
       type: JenkinsPipeline
-    triggers:
-    - github:
-        secret: "${GITHUB_WEBHOOK_SECRET}"
-      type: GitHub
-    - generic:
-        secret: "${GENERIC_WEBHOOK_SECRET}"
-      type: Generic
+#    triggers:
+#    - github:
+#        secret: "${GITHUB_WEBHOOK_SECRET}"
+#      type: GitHub
+#    - generic:
+#        secret: "${GENERIC_WEBHOOK_SECRET}"
+#      type: Generic
 - apiVersion: v1
   kind: BuildConfig
   metadata:
@@ -133,18 +133,19 @@ objects:
     runPolicy: Serial
     source:
       dockerfile: |-
-        FROM wildfly
-        COPY ROOT.war /wildfly/standalone/deployments/ROOT.war
-        CMD $STI_SCRIPTS_PATH/run
-      binary:
-        asFile: ROOT.war
+        FROM openjdk:jre-alpine
+        # if we want to install via apt
+        COPY build/libs/SubjectService-0.0.1-SNAPSHOT.jar /tmp
+        EXPOSE 8080
+        WORKDIR /tmp
+        CMD ["java", "-jar", "SubjectService-0.0.1-SNAPSHOT.jar"]
       type: Docker
-    strategy:
-      dockerStrategy:
-        from:
-          kind: ImageStreamTag
-          name: wildfly:latest
-      type: Docker
+#    strategy:
+#      dockerStrategy:
+#        from:
+#          kind: ImageStreamTag
+#          name: wildfly:latest
+#      type: Docker
     triggers: []
 - apiVersion: v1
   kind: DeploymentConfig
@@ -180,26 +181,26 @@ objects:
             protocol: TCP
           resources: {}
           terminationMessagePath: /dev/termination-log
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 10
-            timeoutSeconds: 2
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 30
-            timeoutSeconds: 2
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
+#          livenessProbe:
+#            httpGet:
+#              path: /
+#              port: 8080
+#              scheme: HTTP
+#            initialDelaySeconds: 10
+#            timeoutSeconds: 2
+#            periodSeconds: 10
+#            successThreshold: 1
+#            failureThreshold: 3
+#          readinessProbe:
+#            httpGet:
+#              path: /
+#              port: 8080
+#              scheme: HTTP
+#            initialDelaySeconds: 30
+#            timeoutSeconds: 2
+#            periodSeconds: 10
+#            successThreshold: 1
+#            failureThreshold: 3
         dnsPolicy: ClusterFirst
         restartPolicy: Always
         securityContext: {}
@@ -219,35 +220,28 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftNewApp
+    name: ${APP_NAME}
     labels:
       app: ${APP_NAME}
-    name: ${APP_NAME}
   spec:
+    type: LoadBalancer
     ports:
-    - name: 8080-tcp
-      port: 8080
-      protocol: TCP
-      targetPort: 8080
+      - port: 8080
+        protocol: TCP
     selector:
-      app: ${APP_NAME}
-      deploymentconfig: ${APP_NAME}
-    sessionAffinity: None
-    type: ClusterIP
-  status:
-    loadBalancer: {}
-- apiVersion: v1
-  kind: Route
-  metadata:
-    name: ${APP_NAME}
-    labels:
-      app: ${APP_NAME}
-  spec:
-    to:
-      kind: Service
-      name: ${APP_NAME}
-      weight: 100
-    port:
-      targetPort: 8080-tcp
-    wildcardPolicy: None
+      app: subjectservice
+
+#- apiVersion: v1
+#  kind: Route
+#  metadata:
+#    name: ${APP_NAME}
+#    labels:
+#      app: ${APP_NAME}
+#  spec:
+#    to:
+#      kind: Service
+#      name: ${APP_NAME}
+#      weight: 100
+#    port:
+#      targetPort: 8080-tcp
+#    wildcardPolicy: None

@@ -25,6 +25,14 @@ repositories {
 
 dependencies {
 	compile('org.springframework.boot:spring-boot-starter-web')
+	// https://mvnrepository.com/artifact/commons-io/commons-io
+	compile group: 'commons-io', name: 'commons-io', version: '2.6'
 	runtime('org.springframework.boot:spring-boot-devtools')
+    // https://mvnrepository.com/artifact/info.cukes/cucumber-jvm
+    testCompile group: 'info.cukes', name: 'cucumber-jvm', version: '1.2.5', ext: 'pom'
 	testCompile('org.springframework.boot:spring-boot-starter-test')
+	// https://mvnrepository.com/artifact/info.cukes/cucumber-junit
+	testCompile group: 'info.cukes', name: 'cucumber-junit', version: '1.2.5'
+	// https://mvnrepository.com/artifact/info.cukes/cucumber-spring
+	testCompile group: 'info.cukes', name: 'cucumber-spring', version: '1.2.5'
 }
